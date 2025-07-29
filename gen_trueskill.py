@@ -1,29 +1,33 @@
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
-from scipy.sparse import coo_matrix
-from scipy.sparse.linalg import lsqr
 from tqdm import tqdm
 from collections import defaultdict
+import firebase_admin
+from firebase_admin import credentials, firestore
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import lsqr
+
+# Initialize Firebase
+cred = credentials.Certificate('../Keys/serviceAccountKey.json')  # Update path
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 # TrueSkill parameters (defaults)
 MU = 25.0
 SIGMA = MU / 3
 BETA = SIGMA / 2
 TAU = SIGMA / 100
-DRAW_PROB = 0.1  # Small draw probability for ties
+DRAW_PROB = 0.1
 
-# Gaussian functions
-gaussian_pdf = norm.pdf
-gaussian_cdf = norm.cdf
-
+# Define Rating class
 class Rating:
     def __init__(self, mu=MU, sigma=SIGMA):
         self.mu = mu
         self.sigma = sigma
 
 def v_non_draw(t, e):
-    return gaussian_pdf(t - e) / gaussian_cdf(t - e)
+    return norm.pdf(t - e) / norm.cdf(t - e)
 
 def w_non_draw(t, e):
     v = v_non_draw(t, e)
@@ -32,19 +36,19 @@ def w_non_draw(t, e):
 def v_draw(t, e):
     a = -e - t
     b = e - t
-    den = gaussian_cdf(b) - gaussian_cdf(a)
+    den = norm.cdf(b) - norm.cdf(a)
     if den == 0:
         return 0
-    return (gaussian_pdf(a) - gaussian_pdf(b)) / den
+    return (norm.pdf(a) - norm.pdf(b)) / den
 
 def w_draw(t, e):
     a = -e - t
     b = e - t
-    den = gaussian_cdf(b) - gaussian_cdf(a)
+    den = norm.cdf(b) - norm.cdf(a)
     if den == 0:
         return 0
-    pdf_a = gaussian_pdf(a)
-    pdf_b = gaussian_pdf(b)
+    pdf_a = norm.pdf(a)
+    pdf_b = norm.pdf(b)
     v = (pdf_a - pdf_b) / den
     term = (a * pdf_a - b * pdf_b) / den
     return v**2 - term
@@ -100,18 +104,16 @@ def update_2v2(red1, red2, blue1, blue2, outcome):
 
 # Load matches CSV
 df_matches = pd.read_csv('matches.csv')
-
-# Filter valid matches once
 df_matches = df_matches.dropna(subset=['red1', 'red2', 'blue1', 'blue2'])
 
-# Collect unique teams efficiently
+# Collect unique teams
 teams = pd.unique(df_matches[['red1', 'red2', 'blue1', 'blue2']].stack().values)
 team_to_idx = {team: i for i, team in enumerate(teams)}
 n_teams = len(teams)
 
 ratings = {team: Rating() for team in teams}
 
-# Prepare for sparse matrix and counters
+# Prepare for win percentage and sparse matrix
 wins = defaultdict(int)
 ties = defaultdict(int)
 losses = defaultdict(int)
@@ -124,39 +126,31 @@ b_list = []
 row_idx = 0
 n = n_teams * 2
 
-# Process matches in one loop using faster itertuples
+# Process matches in one loop
 for row in tqdm(df_matches.itertuples(), total=len(df_matches), desc="Processing matches"):
     red1 = ratings[row.red1]
     red2 = ratings[row.red2]
     blue1 = ratings[row.blue1]
     blue2 = ratings[row.blue2]
     
-    if row.red_score > row.blue_score:
-        outcome = 1
-        wins[row.red1] += 1
-        wins[row.red2] += 1
-        losses[row.blue1] += 1
-        losses[row.blue2] += 1
-    elif row.red_score < row.blue_score:
-        outcome = -1
-        wins[row.blue1] += 1
-        wins[row.blue2] += 1
-        losses[row.red1] += 1
-        losses[row.red2] += 1
-    else:
-        outcome = 0
-        ties[row.red1] += 1
-        ties[row.red2] += 1
-        ties[row.blue1] += 1
-        ties[row.blue2] += 1
-    
-    total_matches[row.red1] += 1
-    total_matches[row.red2] += 1
-    total_matches[row.blue1] += 1
-    total_matches[row.blue2] += 1
-    
+    outcome = 1 if row.red_score > row.blue_score else -1 if row.red_score < row.blue_score else 0
     update_2v2(red1, red2, blue1, blue2, outcome)
     
+    # Win percentage counters
+    red_teams = [row.red1, row.red2]
+    blue_teams = [row.blue1, row.blue2]
+    for team in red_teams + blue_teams:
+        total_matches[team] += 1
+    if outcome == 1:
+        for team in red_teams: wins[team] += 1
+        for team in blue_teams: losses[team] += 1
+    elif outcome == -1:
+        for team in blue_teams: wins[team] += 1
+        for team in red_teams: losses[team] += 1
+    else:
+        for team in red_teams + blue_teams: ties[team] += 1
+    
+    # Sparse matrix entries for OPR/DPR
     r1_idx = team_to_idx[row.red1]
     r2_idx = team_to_idx[row.red2]
     b1_idx = team_to_idx[row.blue1]
@@ -176,52 +170,46 @@ for row in tqdm(df_matches.itertuples(), total=len(df_matches), desc="Processing
     b_list.append(row.blue_score)
     row_idx += 1
 
-# Build sparse matrix
+# Build sparse matrix and solve
 A = coo_matrix((data, (row_indices, col_indices)), shape=(row_idx, n)).tocsr()
 b = np.array(b_list)
-
-# Solve least squares sparsely
 x = lsqr(A, b)[0]
 oprs = x[:n_teams]
 dprs = x[n_teams:]
 
-opr_dict = {teams[i]: oprs[i] for i in range(n_teams)}
-dpr_dict = {teams[i]: dprs[i] for i in range(n_teams)}
-ccvm_dict = {teams[i]: oprs[i] - dprs[i] for i in range(n_teams)}
+opr_dict = dict(zip(teams, oprs))
+dpr_dict = dict(zip(teams, dprs))
+ccvm_dict = {team: opr_dict[team] - dpr_dict[team] for team in teams}
 
 # Compute win percentage
-win_percentage = {}
-for team in teams:
-    total = total_matches[team]
-    if total > 0:
-        win_percentage[team] = ((wins[team] + 0.5 * ties[team]) / total) * 100
-    else:
-        win_percentage[team] = 0.0
+win_percentage = {team: ((wins[team] + 0.5 * ties[team]) / total_matches[team] * 100) if total_matches[team] > 0 else 0.0 for team in teams}
 
-# Rank by mu - 3*sigma (conservative rank)
+# Rank and save to Firestore in batches
 leaderboard = sorted(ratings.items(), key=lambda x: x[1].mu - 3 * x[1].sigma, reverse=True)
 
-# Prepare data for CSV
-leaderboard_data = [
-    {
-        'Rank': rank,
-        'Team': team,
-        'Mu': round(r.mu, 2),
-        'Sigma': round(r.sigma, 2),
-        'Conservative Score': round(r.mu - 3 * r.sigma, 2),
-        'OPR': round(opr_dict.get(team, 0), 2),
-        'DPR': round(dpr_dict.get(team, 0), 2),
-        'CCVM': round(ccvm_dict.get(team, 0), 2),
-        'Win Percentage': round(win_percentage.get(team, 0), 2)
-    }
-    for rank, (team, r) in enumerate(leaderboard, 1)
-]
+batch_size = 500
+batch = db.batch()
+count = 0
 
-# Create DataFrame and save to CSV
-pd.DataFrame(leaderboard_data).to_csv('leaderboard.csv', index=False)
-print("Leaderboard saved to leaderboard.csv")
-
-# Display (optional, can remove for speed)
-print("Team Leaderboard (TrueSkill Rating):")
 for rank, (team, r) in enumerate(leaderboard, 1):
-    print(f"Rank {rank}: Team {team} - Mu {r.mu:.2f}, Sigma {r.sigma:.2f}, Conservative Score {r.mu - 3*r.sigma:.2f}, OPR {opr_dict.get(team, 0):.2f}, DPR {dpr_dict.get(team, 0):.2f}, CCVM {ccvm_dict.get(team, 0):.2f}, Win Percentage {win_percentage.get(team, 0):.2f}%")
+    doc_ref = db.collection('leaderboard').document(team)
+    batch.set(doc_ref, {
+        'rank': rank,
+        'mu': round(r.mu, 2),
+        'sigma': round(r.sigma, 2),
+        'conservativeScore': round(r.mu - 3 * r.sigma, 2),
+        'opr': round(opr_dict.get(team, 0), 2),
+        'dpr': round(dpr_dict.get(team, 0), 2),
+        'ccvm': round(ccvm_dict.get(team, 0), 2),
+        'winPercentage': round(win_percentage.get(team, 0), 2)
+    })
+    count += 1
+    if count == batch_size:
+        batch.commit()
+        batch = db.batch()
+        count = 0
+
+if count > 0:
+    batch.commit()
+
+print("Leaderboard saved to Firestore")
