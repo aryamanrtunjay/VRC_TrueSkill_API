@@ -2,9 +2,8 @@ name: Daily Match Data Update
 
 on:
   schedule:
-    # Run daily at 6:00 AM UTC (adjust timezone as needed)
     - cron: '0 6 * * *'
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch: 
 
 jobs:
   update-matches:
@@ -38,6 +37,14 @@ jobs:
         ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
       run: node export_matches.js
       
+    - name: Generate skills data
+      env:
+        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      run: node skills_gen.js
+      
     - name: Calculate and update TrueSkill ratings
       env:
         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -49,8 +56,8 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add matches.csv ts2026_ratings.json
-        git diff --staged --quiet || git commit -m "🤖 Daily update: matches and TrueSkill ratings $(date)"
+        git add matches.csv skills.csv ts2026_ratings.json
+        git diff --staged --quiet || git commit -m "🤖 Daily update: matches, skills, and TrueSkill ratings $(date)"
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

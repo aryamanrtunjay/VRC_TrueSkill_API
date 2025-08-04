@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import fs from 'node:fs/promises';
+import firebase_admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const TOKEN = process.env.ROBOT_EVENTS_TOKEN;
 if (!TOKEN) {
@@ -15,6 +17,44 @@ const HEADERS = {
 const PROGRAM_ID = 1;
 
 const BAR_WIDTH = 30;
+
+function initializeFirebase() {
+  if (firebase_admin.apps.length > 0) {
+    return getFirestore();
+  }
+  
+  try {
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      const cred = firebase_admin.credential.cert({
+        type: 'service_account',
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      });
+      firebase_admin.initializeApp({ credential: cred });
+      return getFirestore();
+    }
+  } catch (error) {
+    console.log('Firebase initialization with env vars failed, trying key file...');
+  }
+
+  try {
+    const keyPaths = ['./serviceAccountKey.json', '../Keys/serviceAccountKey.json'];
+    for (const keyPath of keyPaths) {
+      try {
+        const cred = firebase_admin.credential.cert(keyPath);
+        firebase_admin.initializeApp({ credential: cred });
+        return getFirestore();
+      } catch (e) {
+        continue;
+      }
+    }
+  } catch (error) {
+    console.log('Firebase initialization with key file failed');
+  }
+
+  return null;
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -90,15 +130,15 @@ async function main() {
   console.log('📡 Fetching seasons...');
   const seasons = await fetchAll('/seasons', { program: PROGRAM_ID });
 
-  const targetSeasons = seasons.filter(s => s.id === 190);
+  const targetSeasons = seasons.filter(s => s.id === 197);
   if (targetSeasons.length === 0) {
-    console.log('❌ No matching seasons found (expecting ID 190)');
+    console.log('❌ No matching seasons found (expecting ID 197)');
     return;
   }
 
   console.log(`🧭 Target seasons: ${targetSeasons.map(s => s.name).join(', ')}`);
 
-  const rows = [];
+  const teamSkillsData = [];
   const header = 'team,season,driver,programming,combined';
 
   for (const season of targetSeasons) {
@@ -134,25 +174,89 @@ async function main() {
 
       const combined = maxDriver + maxProgramming;
 
-      if (combined > 0) {  // Only add if has skills
-        rows.push([
-          team.number,
-          season.name,
-          maxDriver,
-          maxProgramming,
-          combined
-        ]);
-      }
+      teamSkillsData.push({
+        teamNumber: team.number,
+        season: season.name,
+        driverScore: maxDriver,
+        progScore: maxProgramming,
+        skillScore: combined
+      });
     }
   }
 
+  teamSkillsData.sort((a, b) => b.skillScore - a.skillScore);
+  
+  teamSkillsData.forEach((team, index) => {
+    team.skillsRank = index + 1;
+  });
+
   console.log('\n💾 Writing to skills.csv...');
+  const rows = teamSkillsData
+    .filter(team => team.skillScore > 0)
+    .map(team => [
+      team.teamNumber,
+      team.season,
+      team.driverScore,
+      team.progScore,
+      team.skillScore
+    ]);
+  
   const csv = [header, ...rows.map(r => r.join(','))].join('\n');
   await fs.writeFile('skills.csv', csv, 'utf8');
+
+  console.log('\n🔥 Updating Firebase with skills data...');
+  const db = initializeFirebase();
+  
+  if (!db) {
+    console.log('❌ Firebase not configured. Skills saved to CSV only.');
+  } else {
+    const batch = db.batch();
+    let batchCount = 0;
+    let updatedTeams = 0;
+    
+    for (const team of teamSkillsData) {
+      const docRef = db.collection('leaderboard').document(team.teamNumber);
+      
+      batch.update(docRef, {
+        skillScore: team.skillScore,
+        skillsRank: team.skillsRank,
+        driverScore: team.driverScore,
+        progScore: team.progScore
+      });
+      
+      batchCount++;
+      
+      if (batchCount === 500) {
+        try {
+          await batch.commit();
+          updatedTeams += batchCount;
+          batchCount = 0;
+        } catch (error) {
+          console.error(`Error committing batch: ${error}`);
+        }
+      }
+    }
+    
+    if (batchCount > 0) {
+      try {
+        await batch.commit();
+        updatedTeams += batchCount;
+      } catch (error) {
+        console.error(`Error committing final batch: ${error}`);
+      }
+    }
+    
+    console.log(`✅ Updated ${updatedTeams} teams in Firestore with skills data`);
+  }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`✅ Done: ${rows.length} team skills saved to skills.csv`);
   console.log(`⏱️ Elapsed time: ${elapsed} seconds`);
+  
+  console.log('\n🏆 Top 10 teams by combined skills:');
+  teamSkillsData.slice(0, 10).forEach((team, index) => {
+    console.log(`${(index + 1).toString().padStart(2, ' ')}. ${team.teamNumber}: ${team.skillScore} (Driver: ${team.driverScore}, Programming: ${team.progScore})`);
+  });
 }
 
 main().catch(err => {
