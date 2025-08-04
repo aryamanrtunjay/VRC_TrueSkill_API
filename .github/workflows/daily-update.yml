@@ -1,0 +1,56 @@
+name: Daily Match Data Update
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC (adjust timezone as needed)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-matches:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy trueskill tqdm firebase-admin python-dotenv
+        
+    - name: Export matches from Robot Events API
+      env:
+        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
+      run: node export_matches.js
+      
+    - name: Calculate and update TrueSkill ratings
+      env:
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      run: python complete_ts2026.py
+      
+    - name: Commit and push updated data
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add matches.csv ts2026_ratings.json
+        git diff --staged --quiet || git commit -m "🤖 Daily update: matches and TrueSkill ratings $(date)"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
