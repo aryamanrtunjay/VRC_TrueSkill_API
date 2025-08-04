@@ -1,2 +1,18 @@
 .vercel
 .env
+
+# Firebase credentials
+serviceAccountKey.json
+firebase-key.json
+*firebase*key*.json
+
+# Node modules
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
