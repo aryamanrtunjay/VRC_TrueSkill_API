@@ -113,10 +113,11 @@ def update_firebase_with_ts2026():
         try:
             doc_ref = db.collection('leaderboard').document(team)
             
-            # Update the document with the new ts2026 field
-            batch.update(doc_ref, {
+            # Set the document with the new ts2026 field (creates if doesn't exist, updates if it does)
+            batch.set(doc_ref, {
+                'team': team,
                 'ts2026': data['ts2026']
-            })
+            }, merge=True)
             
             count += 1
             
