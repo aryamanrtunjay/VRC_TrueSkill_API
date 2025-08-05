@@ -220,7 +220,7 @@ async function main() {
     let updatedTeams = 0;
     
     for (const team of teamSkillsData) {
-      const docRef = db.collection('leaderboard').document(team.teamNumber);
+      const docRef = db.collection('leaderboard').doc(team.teamNumber);
       
       batch.update(docRef, {
         skillScore: team.skillScore,
