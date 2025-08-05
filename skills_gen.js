@@ -131,42 +131,81 @@ function drawProgressBar(done, total, startTime) {
 async function main() {
   const startTime = Date.now();
   
-  console.log('� Reading existing skills.csv file...');
+  console.log('🔍 Fetching current season...');
+  const seasons = await fetchAll('/seasons', { program: [PROGRAM_ID] });
+  const currentSeason = seasons.find(s => s.current === true);
   
-  // Read the existing skills.csv file
-  let csvContent;
-  try {
-    csvContent = await fs.readFile('skills.csv', 'utf8');
-  } catch (error) {
-    console.error('❌ Could not read skills.csv file:', error.message);
+  if (!currentSeason) {
+    console.error('❌ No current season found');
     return;
   }
-
-  // Parse CSV data
-  const lines = csvContent.trim().split('\n');
-  const header = lines[0]; // team,season,driver,programming,combined
-  const dataLines = lines.slice(1);
   
-  console.log(`� Found ${dataLines.length} teams in skills.csv`);
+  console.log(`🎯 Current season: ${currentSeason.name} (ID: ${currentSeason.id})`);
+
+  console.log('👥 Fetching teams...');
+  const teams = await fetchAll('/teams', {
+    program: [PROGRAM_ID],
+    grade: ['High School', 'Middle School'],
+    country: ['US'],
+    registered: true,
+    myTeams: false
+  });
+
+  console.log(`📊 Found ${teams.length} teams`);
 
   const teamSkillsData = [];
   
-  for (const line of dataLines) {
-    const [teamNumber, season, driverScore, progScore, skillScore] = line.split(',');
-    teamSkillsData.push({
-      teamNumber: teamNumber,
-      season: season,
-      driverScore: parseInt(driverScore),
-      progScore: parseInt(progScore),
-      skillScore: parseInt(skillScore)
-    });
+  console.log('\n🎮 Fetching skills for each team...');
+  for (let i = 0; i < teams.length; i++) {
+    const team = teams[i];
+    drawProgressBar(i, teams.length, startTime);
+    
+    try {
+      const skills = await apiFetch('/teams/' + team.id + '/skills', {
+        season: [currentSeason.id]
+      });
+      
+      if (skills.data && skills.data.length > 0) {
+        const skill = skills.data[0];
+        const combined = (skill.driver || 0) + (skill.programming || 0);
+        
+        teamSkillsData.push({
+          teamNumber: team.number,
+          season: currentSeason.id,
+          driverScore: skill.driver || 0,
+          progScore: skill.programming || 0,
+          skillScore: combined
+        });
+      }
+    } catch (error) {
+      console.error(`\n❌ Error fetching skills for team ${team.number}: ${error.message}`);
+    }
   }
+  
+  process.stdout.write('\n');
+  console.log(`📈 Found skills data for ${teamSkillsData.length} teams`);
 
   // Sort by skill score and assign ranks
   teamSkillsData.sort((a, b) => b.skillScore - a.skillScore);
   teamSkillsData.forEach((team, index) => {
     team.skillsRank = index + 1;
   });
+
+  // Write to CSV file
+  console.log('\n📄 Writing skills data to CSV...');
+  const csvHeader = 'team,season,driver,programming,combined';
+  const csvLines = [csvHeader];
+  
+  for (const team of teamSkillsData) {
+    csvLines.push(`${team.teamNumber},${team.season},${team.driverScore},${team.progScore},${team.skillScore}`);
+  }
+  
+  try {
+    await fs.writeFile('skills.csv', csvLines.join('\n'));
+    console.log(`✅ Skills data written to skills.csv (${teamSkillsData.length} teams)`);
+  } catch (error) {
+    console.error('❌ Error writing skills.csv:', error.message);
+  }
 
   console.log('\n🔥 Updating Firebase with skills data...');
   const db = initializeFirebase();
@@ -215,7 +254,7 @@ async function main() {
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`✅ Done: ${teamSkillsData.length} teams uploaded from skills.csv`);
+  console.log(`✅ Done: ${teamSkillsData.length} teams processed`);
   console.log(`⏱️ Elapsed time: ${elapsed} seconds`);
   
   console.log('\n🏆 Top 10 teams by combined skills:');
