@@ -118,7 +118,8 @@ async function main() {
     console.log(`\n📅 Fetching events for season: ${season.name}`);
     const events = await fetchAll('/events', {
       program: PROGRAM_ID,
-      season: season.id
+      season: season.id,
+      eventTypes: ['tournament', 'league']
     });
 
     console.log(`   🔎 Found ${events.length} events`);
