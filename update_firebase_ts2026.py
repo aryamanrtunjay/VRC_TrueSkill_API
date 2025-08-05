@@ -6,8 +6,11 @@ from tqdm import tqdm
 
 def initialize_firebase():
     """Initialize Firebase using environment variables or service account key"""
-    if firebase_admin._apps:
-        return firestore.client()
+    
+    # Clear any existing Firebase apps first
+    for app in firebase_admin._apps.values():
+        firebase_admin.delete_app(app)
+    firebase_admin._apps.clear()
     
     try:
         # Method 1: Try environment variables (like your server)
@@ -22,8 +25,6 @@ def initialize_firebase():
             print(f"Project ID: {project_id}")
             print(f"Client Email: {client_email}")
             print(f"Raw private key length: {len(raw_key)}")
-            print(f"Raw private key starts with: {raw_key[:50]}...")
-            print(f"Raw private key ends with: ...{raw_key[-50:]}")
             
             # Handle private key the same way as Node.js version
             private_key = raw_key.replace('\\n', '\n')
@@ -35,8 +36,6 @@ def initialize_firebase():
             
             print(f"Final Project ID: {project_id}")
             print(f"Final Client Email: {client_email}")
-            print(f"Processed private key starts with: {private_key[:50]}...")
-            print(f"Processed private key ends with: ...{private_key[-50:]}")
             
             cred_dict = {
                 'type': 'service_account',
@@ -48,8 +47,12 @@ def initialize_firebase():
             
             print(f"Credential dict project_id: {cred_dict['project_id']}")
             
+            # Initialize with explicit project ID
             cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
+            app = firebase_admin.initialize_app(cred, {
+                'projectId': project_id
+            })
+            print(f"Firebase app initialized with project ID: {app.project_id}")
             return firestore.client()
     except Exception as e:
         print(f"Environment variables method failed: {e}")
