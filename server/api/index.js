@@ -32,7 +32,8 @@ app.get('/trueskill/:team', async (req, res) => {
         opr: parseFloat(data.opr),
         dpr: parseFloat(data.dpr),
         ccvm: parseFloat(data.ccvm),
-        winPercentage: parseFloat(data.winPercentage)
+        winPercentage: parseFloat(data.winPercentage),
+        ts2026: data.ts2026 || 0.0
       });
     } else {
       res.status(404).json({ error: 'Team not found' });
@@ -53,8 +54,7 @@ app.get('/skills/:team', async (req, res) => {
         skillScore: data.skillScore || 0,
         skillsRank: data.skillsRank || null,
         driverScore: data.driverScore || 0,
-        progScore: data.progScore || 0,
-        ts2026: data.ts2026 || 0.0
+        progScore: data.progScore || 0
       });
     } else {
       res.status(404).json({ error: 'Team not found' });

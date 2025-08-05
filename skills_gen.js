@@ -130,104 +130,63 @@ function drawProgressBar(done, total, startTime) {
 
 async function main() {
   const startTime = Date.now();
-  console.log('📡 Fetching seasons...');
-  const seasons = await fetchAll('/seasons', { program: PROGRAM_ID });
-
-  const targetSeasons = seasons.filter(s => s.id === 197);
-  if (targetSeasons.length === 0) {
-    console.log('❌ No matching seasons found (expecting ID 197)');
+  
+  console.log('� Reading existing skills.csv file...');
+  
+  // Read the existing skills.csv file
+  let csvContent;
+  try {
+    csvContent = await fs.readFile('skills.csv', 'utf8');
+  } catch (error) {
+    console.error('❌ Could not read skills.csv file:', error.message);
     return;
   }
 
-  console.log(`🧭 Target seasons: ${targetSeasons.map(s => s.name).join(', ')}`);
+  // Parse CSV data
+  const lines = csvContent.trim().split('\n');
+  const header = lines[0]; // team,season,driver,programming,combined
+  const dataLines = lines.slice(1);
+  
+  console.log(`� Found ${dataLines.length} teams in skills.csv`);
 
   const teamSkillsData = [];
-  const header = 'team,season,driver,programming,combined';
-
-  for (const season of targetSeasons) {
-    console.log(`\n📅 Fetching teams for season: ${season.name}`);
-    const teams = await fetchAll('/teams', {
-      program: PROGRAM_ID,
-      season: season.id,
-      grade: ['High School'],
-      registered: true
+  
+  for (const line of dataLines) {
+    const [teamNumber, season, driverScore, progScore, skillScore] = line.split(',');
+    teamSkillsData.push({
+      teamNumber: teamNumber,
+      season: season,
+      driverScore: parseInt(driverScore),
+      progScore: parseInt(progScore),
+      skillScore: parseInt(skillScore)
     });
-
-    console.log(`   🔎 Found ${teams.length} registered teams (High School only)`);
-
-    let processedTeams = 0;
-    const totalTeams = teams.length;
-
-    for (const team of teams) {
-      processedTeams++;
-      drawProgressBar(processedTeams, totalTeams, startTime);
-
-      const skills = await fetchAll(`/teams/${team.id}/skills`, {
-        season: [season.id]
-      });
-
-      let maxDriver = 0;
-      let maxProgramming = 0;
-
-      for (const skill of skills) {
-        if (skill.type === 'driver') {
-          maxDriver = Math.max(maxDriver, skill.score);
-        } else if (skill.type === 'programming') {
-          maxProgramming = Math.max(maxProgramming, skill.score);
-        }
-      }
-
-      const combined = maxDriver + maxProgramming;
-
-      teamSkillsData.push({
-        teamNumber: team.number,
-        season: season.name,
-        driverScore: maxDriver,
-        progScore: maxProgramming,
-        skillScore: combined
-      });
-    }
   }
 
+  // Sort by skill score and assign ranks
   teamSkillsData.sort((a, b) => b.skillScore - a.skillScore);
-  
   teamSkillsData.forEach((team, index) => {
     team.skillsRank = index + 1;
   });
-
-  console.log('\n💾 Writing to skills.csv...');
-  const rows = teamSkillsData
-    .filter(team => team.skillScore > 0)
-    .map(team => [
-      team.teamNumber,
-      team.season,
-      team.driverScore,
-      team.progScore,
-      team.skillScore
-    ]);
-  
-  const csv = [header, ...rows.map(r => r.join(','))].join('\n');
-  await fs.writeFile('skills.csv', csv, 'utf8');
 
   console.log('\n🔥 Updating Firebase with skills data...');
   const db = initializeFirebase();
   
   if (!db) {
-    console.log('❌ Firebase not configured. Skills saved to CSV only.');
+    console.log('❌ Firebase not configured. Cannot update database.');
   } else {
-    const batch = db.batch();
+    let batch = db.batch();
     let batchCount = 0;
     let updatedTeams = 0;
     
     for (const team of teamSkillsData) {
       const docRef = db.collection('leaderboard').doc(team.teamNumber);
       
-      batch.update(docRef, {
+      batch.set(docRef, {
         skillScore: team.skillScore,
         skillsRank: team.skillsRank,
         driverScore: team.driverScore,
         progScore: team.progScore
-      });
+      }, { merge: true });
       
       batchCount++;
       
@@ -236,6 +195,7 @@ async function main() {
           await batch.commit();
           updatedTeams += batchCount;
           batchCount = 0;
+          batch = db.batch(); // Create a new batch after committing
         } catch (error) {
           console.error(`Error committing batch: ${error}`);
         }
@@ -255,7 +215,7 @@ async function main() {
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`✅ Done: ${rows.length} team skills saved to skills.csv`);
+  console.log(`✅ Done: ${teamSkillsData.length} teams uploaded from skills.csv`);
   console.log(`⏱️ Elapsed time: ${elapsed} seconds`);
   
   console.log('\n🏆 Top 10 teams by combined skills:');
