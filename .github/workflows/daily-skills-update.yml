@@ -22,6 +22,15 @@ jobs:
     - name: Install dependencies
       run: npm install
       
+    - name: Test Firebase authentication
+      env:
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      run: |
+        echo "Testing Firebase authentication..."
+        node test_firebase_auth.js
+      
     - name: Generate skills data
       env:
         ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
@@ -38,6 +47,9 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+        # Pull latest changes to avoid conflicts
+        git pull origin main --rebase
         
         [ -f skills.csv ] && git add skills.csv
         
