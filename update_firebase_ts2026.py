@@ -14,8 +14,13 @@ def initialize_firebase():
         if all(key in os.environ for key in ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY']):
             print("Initializing Firebase with environment variables...")
             
-            # Debug: show what we're getting
+            # Debug: show all environment variables
+            project_id = os.getenv('FIREBASE_PROJECT_ID')
+            client_email = os.getenv('FIREBASE_CLIENT_EMAIL')
             raw_key = os.getenv('FIREBASE_PRIVATE_KEY', '')
+            
+            print(f"Project ID: {project_id}")
+            print(f"Client Email: {client_email}")
             print(f"Raw private key length: {len(raw_key)}")
             print(f"Raw private key starts with: {raw_key[:50]}...")
             print(f"Raw private key ends with: ...{raw_key[-50:]}")
@@ -28,16 +33,20 @@ def initialize_firebase():
                 private_key = private_key[1:-1]
                 print("Removed surrounding quotes from private key")
             
+            print(f"Final Project ID: {project_id}")
+            print(f"Final Client Email: {client_email}")
             print(f"Processed private key starts with: {private_key[:50]}...")
             print(f"Processed private key ends with: ...{private_key[-50:]}")
             
             cred_dict = {
                 'type': 'service_account',
-                'project_id': os.getenv('FIREBASE_PROJECT_ID'),
-                'client_email': os.getenv('FIREBASE_CLIENT_EMAIL'),
+                'project_id': project_id,
+                'client_email': client_email,
                 'private_key': private_key,
                 'token_uri': 'https://oauth2.googleapis.com/token'
             }
+            
+            print(f"Credential dict project_id: {cred_dict['project_id']}")
             
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
