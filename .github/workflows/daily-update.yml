@@ -72,7 +72,9 @@ jobs:
         
         # Check if ts2026_ratings.json exists
         if [ -f "ts2026_ratings.json" ]; then
-          echo "Found existing ts2026_ratings.json, updating Firebase..."
+          echo "Found existing ts2026_ratings.json, testing Firebase connection..."
+          python test_firebase_simple.py
+          echo "If test successful, running full update..."
           python update_firebase_ts2026.py
         else
           echo "ts2026_ratings.json not found, skipping Firebase update"
