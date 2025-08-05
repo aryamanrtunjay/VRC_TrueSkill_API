@@ -106,6 +106,28 @@ def calculate_and_save_ts2026():
         print("Please configure Firebase credentials and run update_firebase_ts2026.py to update the database.")
         return True
     
+    print("\nFetching all teams from leaderboard collection...")
+    leaderboard_docs = db.collection('leaderboard').stream()
+    all_teams = set()
+    for doc in leaderboard_docs:
+        all_teams.add(doc.id)
+    
+    print(f"Found {len(all_teams)} teams in leaderboard collection")
+    
+    # Add base ratings for teams that haven't played matches this season
+    base_rating = Rating()  # Default: mu=25, sigma=25/3
+    base_conservative_score = base_rating.mu - 3 * base_rating.sigma
+    
+    teams_without_matches = all_teams - set(ts2026_data.keys())
+    print(f"Adding base ts2026 rating ({round(base_conservative_score, 2)}) for {len(teams_without_matches)} teams without matches")
+    
+    for team in teams_without_matches:
+        ts2026_data[team] = {
+            'mu': round(base_rating.mu, 2),
+            'sigma': round(base_rating.sigma, 2),
+            'ts2026': round(base_conservative_score, 2)
+        }
+    
     print("\nUpdating Firestore documents with ts2026 field...")
     batch_size = 500
     batch = db.batch()

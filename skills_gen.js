@@ -149,10 +149,11 @@ async function main() {
     const teams = await fetchAll('/teams', {
       program: PROGRAM_ID,
       season: season.id,
-      grade: ['High School']
+      grade: ['High School'],
+      registered: true
     });
 
-    console.log(`   🔎 Found ${teams.length} teams (High School only)`);
+    console.log(`   🔎 Found ${teams.length} registered teams (High School only)`);
 
     let processedTeams = 0;
     const totalTeams = teams.length;
