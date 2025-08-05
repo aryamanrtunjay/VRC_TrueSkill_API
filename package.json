@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "VEX Robotics Competition TrueSkill API",
   "scripts": {
+    "build": "echo 'Build completed - no build step required for serverless functions'",
     "dev": "vercel dev",
     "start": "node server.js"
   },
