@@ -26,7 +26,10 @@ export default async function handler(req, res) {
   const { team } = req.query;
 
   if (!team) {
-    res.status(400).json({ error: 'Team parameter is required' });
+    res.status(400).json({ 
+      error: 'Team parameter is required',
+      usage: 'GET /api/trueskill?team=1234A'
+    });
     return;
   }
 

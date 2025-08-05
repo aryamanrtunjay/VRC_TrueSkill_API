@@ -63,39 +63,39 @@
 
     <div class="endpoint">
         <h3>Get Team Skills Data</h3>
-        <div class="endpoint-url">GET /api/skills/{team}</div>
+        <div class="endpoint-url">GET /api/skills?team={team}</div>
         <p>Returns skills data for a specific team including skill score, driver score, and programming score.</p>
-        <p><strong>Example:</strong> <a href="/api/skills/1234A" class="example">/api/skills/1234A</a></p>
+        <p><strong>Example:</strong> <a href="/api/skills?team=1234A" class="example">/api/skills?team=1234A</a></p>
     </div>
 
     <div class="endpoint">
         <h3>Get Team TrueSkill Data</h3>
-        <div class="endpoint-url">GET /api/trueskill/{team}</div>
+        <div class="endpoint-url">GET /api/trueskill?team={team}</div>
         <p>Returns TrueSkill ratings, rankings, OPR, DPR, CCVM, and win percentage for a team.</p>
-        <p><strong>Example:</strong> <a href="/api/trueskill/1234A" class="example">/api/trueskill/1234A</a></p>
+        <p><strong>Example:</strong> <a href="/api/trueskill?team=1234A" class="example">/api/trueskill?team=1234A</a></p>
     </div>
 
     <div class="endpoint">
         <h3>Get Skills Leaderboard</h3>
-        <div class="endpoint-url">GET /api/leaderboard/skills?limit=50</div>
+        <div class="endpoint-url">GET /api/leaderboard?limit=50</div>
         <p>Returns the top teams ranked by skills score. Optional limit parameter (default: 50).</p>
-        <p><strong>Example:</strong> <a href="/api/leaderboard/skills?limit=25" class="example">/api/leaderboard/skills?limit=25</a></p>
+        <p><strong>Example:</strong> <a href="/api/leaderboard?limit=25" class="example">/api/leaderboard?limit=25</a></p>
     </div>
 
     <div class="endpoint">
         <h3>API Information</h3>
-        <div class="endpoint-url">GET /api/</div>
+        <div class="endpoint-url">GET /api/hello</div>
         <p>Returns API documentation and status in JSON format.</p>
-        <p><strong>Example:</strong> <a href="/api/" class="example">/api/</a></p>
+        <p><strong>Example:</strong> <a href="/api/hello" class="example">/api/hello</a></p>
     </div>
 
     <h2>📊 Usage</h2>
-    <p>All endpoints support CORS and return JSON responses. Replace <code>{team}</code> with actual team numbers like <code>1234A</code>, <code>5678B</code>, etc.</p>
+    <p>All endpoints support CORS and return JSON responses. Use query parameters like <code>?team=1234A</code> for team-specific data.</p>
     
     <h2>🔗 Links</h2>
     <p>
         <a href="https://github.com/a-coder4/VRC_TrueSkill_API" target="_blank">GitHub Repository</a> |
-        <a href="/api/" class="example">API Documentation (JSON)</a>
+        <a href="/api/hello" class="example">API Documentation (JSON)</a>
     </p>
 </body>
 </html>
