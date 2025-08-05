@@ -32,42 +32,77 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy trueskill tqdm firebase-admin python-dotenv
         
-    - name: Export matches from Robot Events API
-      env:
-        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
-      run: |
-        echo "Starting match export..."
-        node export_matches.js
-        echo "Match export completed. Checking if matches.csv was created..."
-        ls -la matches.csv || echo "matches.csv not found"
+    # Commented out for testing - using existing data files
+    # - name: Export matches from Robot Events API
+    #   env:
+    #     ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
+    #   run: |
+    #     echo "Starting match export..."
+    #     node export_matches.js
+    #     echo "Match export completed. Checking if matches.csv was created..."
+    #     ls -la matches.csv || echo "matches.csv not found"
       
-    - name: Calculate and update TrueSkill ratings
+    # - name: Calculate and update TrueSkill ratings
+    #   env:
+    #     FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+    #     FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+    #     FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+    #     FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+    #   run: |
+    #     echo "Starting TrueSkill calculation..."
+    #     # Create a proper service account key file
+    #     echo '{
+    #       "type": "service_account",
+    #       "project_id": "'$FIREBASE_PROJECT_ID'",
+    #       "client_email": "'$FIREBASE_CLIENT_EMAIL'",
+    #       "private_key": "'$FIREBASE_PRIVATE_KEY'",
+    #       "token_uri": "https://oauth2.googleapis.com/token"
+    #     }' > serviceAccountKey.json
+    #     python complete_ts2026.py
+    #     echo "TrueSkill calculation completed. Checking if ts2026_ratings.json was created..."
+    #     ls -la ts2026_ratings.json || echo "ts2026_ratings.json not found"
+    
+    - name: Update Firebase with existing TrueSkill data
       env:
         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
         FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
       run: |
-        echo "Starting TrueSkill calculation..."
-        python complete_ts2026.py
-        echo "TrueSkill calculation completed. Checking if ts2026_ratings.json was created..."
-        ls -la ts2026_ratings.json || echo "ts2026_ratings.json not found"
+        echo "Updating Firebase with existing ts2026_ratings.json..."
+        # Create a proper service account key file
+        echo '{
+          "type": "service_account",
+          "project_id": "'$FIREBASE_PROJECT_ID'",
+          "client_email": "'$FIREBASE_CLIENT_EMAIL'",
+          "private_key": "'$FIREBASE_PRIVATE_KEY'",
+          "token_uri": "https://oauth2.googleapis.com/token"
+        }' > serviceAccountKey.json
+        
+        # Check if ts2026_ratings.json exists
+        if [ -f "ts2026_ratings.json" ]; then
+          echo "Found existing ts2026_ratings.json, updating Firebase..."
+          python update_firebase_ts2026.py
+        else
+          echo "ts2026_ratings.json not found, skipping Firebase update"
+        fi
       
     - name: Commit and push updated data
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # Pull latest changes to avoid conflicts
-        git pull origin main --rebase
+        # Add any changed files first
+        git add -A
         
-        [ -f matches.csv ] && git add matches.csv
-        [ -f ts2026_ratings.json ] && git add ts2026_ratings.json
-        
+        # Check if there are any changes to commit
         if ! git diff --staged --quiet; then
-          git commit -m "Daily update: matches and TrueSkill ratings $(date)"
+          git commit -m "Daily Firebase update: TrueSkill ratings $(date)"
+          # Pull latest changes and rebase
+          git pull origin main --rebase
           git push
         else
-          echo "No changes to commit"
+          echo "No changes to commit - Firebase update completed"
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
