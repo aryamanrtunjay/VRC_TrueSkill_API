@@ -14,12 +14,22 @@ def initialize_firebase():
         if all(key in os.environ for key in ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY']):
             print("Initializing Firebase with environment variables...")
             
+            # Debug: show what we're getting
+            raw_key = os.getenv('FIREBASE_PRIVATE_KEY', '')
+            print(f"Raw private key length: {len(raw_key)}")
+            print(f"Raw private key starts with: {raw_key[:50]}...")
+            print(f"Raw private key ends with: ...{raw_key[-50:]}")
+            
             # Handle private key the same way as Node.js version
-            private_key = os.getenv('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n')
+            private_key = raw_key.replace('\\n', '\n')
             
             # Remove quotes if they exist
             if private_key.startswith('"') and private_key.endswith('"'):
                 private_key = private_key[1:-1]
+                print("Removed surrounding quotes from private key")
+            
+            print(f"Processed private key starts with: {private_key[:50]}...")
+            print(f"Processed private key ends with: ...{private_key[-50:]}")
             
             cred_dict = {
                 'type': 'service_account',
