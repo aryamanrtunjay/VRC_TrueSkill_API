@@ -96,7 +96,10 @@ async function fetchAll(endpoint, params = {}) {
   while (true) {
     const result = await apiFetch(endpoint, { ...params, page, per_page: 100 });
     out = out.concat(result.data);
-    console.log(`🔍 Fetched ${out.length} teams so far...`);
+
+    if (endpoint === '/teams') {
+      console.log(`🔍 Fetched ${out.length} teams so far...`);
+    }
 
     if (!result.meta || result.meta.current_page >= result.meta.last_page) break;
 
@@ -145,10 +148,11 @@ async function main() {
     console.log(`\n📅 Fetching teams for season: ${season.name}`);
     const teams = await fetchAll('/teams', {
       program: PROGRAM_ID,
-      season: season.id
+      season: season.id,
+      grade: ['High School']
     });
 
-    console.log(`   🔎 Found ${teams.length} teams`);
+    console.log(`   🔎 Found ${teams.length} teams (High School only)`);
 
     let processedTeams = 0;
     const totalTeams = teams.length;

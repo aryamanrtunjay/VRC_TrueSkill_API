@@ -41,18 +41,6 @@ jobs:
         echo "Match export completed. Checking if matches.csv was created..."
         ls -la matches.csv || echo "matches.csv not found"
       
-    - name: Generate skills data
-      env:
-        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
-        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
-      run: |
-        echo "Starting skills generation..."
-        node skills_gen.js
-        echo "Skills generation completed. Checking if skills.csv was created..."
-        ls -la skills.csv || echo "skills.csv not found"
-      
     - name: Calculate and update TrueSkill ratings
       env:
         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -70,11 +58,10 @@ jobs:
         git config --local user.name "GitHub Action"
         
         [ -f matches.csv ] && git add matches.csv
-        [ -f skills.csv ] && git add skills.csv
         [ -f ts2026_ratings.json ] && git add ts2026_ratings.json
         
         if ! git diff --staged --quiet; then
-          git commit -m "Daily update: matches, skills, and TrueSkill ratings $(date)"
+          git commit -m "Daily update: matches and TrueSkill ratings $(date)"
           git push
         else
           echo "No changes to commit"
