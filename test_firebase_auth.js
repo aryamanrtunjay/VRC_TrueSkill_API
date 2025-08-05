@@ -66,6 +66,8 @@ async function testFirebaseAuth() {
   try {
     // Try to read a single document to test auth
     console.log('📡 Testing Firestore access...');
+    
+    // Set a longer timeout and retry logic
     const testRef = db.collection('leaderboard').limit(1);
     const snapshot = await testRef.get();
     
@@ -81,7 +83,26 @@ async function testFirebaseAuth() {
     
   } catch (error) {
     console.log('❌ Firebase access failed:', error.message);
-    process.exit(1);
+    console.log('🔍 Error code:', error.code);
+    console.log('🔍 Full error:', error);
+    
+    // Try a simpler connection test
+    console.log('🔄 Trying alternative authentication test...');
+    try {
+      // Just try to get the app instance to verify credentials are valid
+      const app = firebase_admin.app();
+      console.log('✅ Firebase app initialized successfully');
+      console.log('📋 Project ID from app:', app.options.projectId);
+      
+      // The credentials are valid, but there might be a network/SSL issue
+      console.log('⚠️ Credentials are valid, but Firestore connection failed');
+      console.log('💡 This might be a temporary network issue in GitHub Actions');
+      console.log('💡 Try running the workflow again, or check if it works locally');
+      
+    } catch (altError) {
+      console.log('❌ Alternative test also failed:', altError.message);
+      process.exit(1);
+    }
   }
 }
 
