@@ -1,5 +1,9 @@
 import express from 'express';
 import admin from 'firebase-admin';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
 
@@ -88,5 +92,17 @@ app.get('/leaderboard/skills', async (req, res) => {
     res.status(500).json({ error: 'Firebase error: ' + err.message });
   }
 });
+
+// Start server for local testing
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log('Available endpoints:');
+    console.log(`  GET /trueskill/:team - TrueSkill data for a team`);
+    console.log(`  GET /skills/:team - Skills data for a team`);
+    console.log(`  GET /leaderboard/skills?limit=50 - Top skills teams`);
+  });
+}
 
 export default app;
