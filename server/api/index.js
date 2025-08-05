@@ -38,4 +38,55 @@ app.get('/trueskill/:team', async (req, res) => {
   }
 });
 
+app.get('/skills/:team', async (req, res) => {
+  const teamName = req.params.team;
+  try {
+    const snapshot = await admin.firestore().collection('leaderboard').doc(teamName).get();
+    if (snapshot.exists) {
+      const data = snapshot.data();
+      res.json({
+        teamNumber: teamName,
+        skillScore: data.skillScore || 0,
+        skillsRank: data.skillsRank || null,
+        driverScore: data.driverScore || 0,
+        progScore: data.progScore || 0,
+        ts2026: data.ts2026 || 0.0
+      });
+    } else {
+      res.status(404).json({ error: 'Team not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Firebase error: ' + err.message });
+  }
+});
+
+app.get('/leaderboard/skills', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const snapshot = await admin.firestore()
+      .collection('leaderboard')
+      .orderBy('skillsRank', 'asc')
+      .limit(limit)
+      .get();
+    
+    const teams = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.skillScore && data.skillScore > 0) {
+        teams.push({
+          teamNumber: doc.id,
+          skillScore: data.skillScore,
+          skillsRank: data.skillsRank,
+          driverScore: data.driverScore || 0,
+          progScore: data.progScore || 0
+        });
+      }
+    });
+    
+    res.json(teams);
+  } catch (err) {
+    res.status(500).json({ error: 'Firebase error: ' + err.message });
+  }
+});
+
 export default app;
