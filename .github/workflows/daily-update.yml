@@ -57,6 +57,9 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
+        # Pull latest changes to avoid conflicts
+        git pull origin main --rebase
+        
         [ -f matches.csv ] && git add matches.csv
         [ -f ts2026_ratings.json ] && git add ts2026_ratings.json
         
