@@ -32,35 +32,33 @@ jobs:
         python -m pip install --upgrade pip
         pip install pandas numpy trueskill tqdm firebase-admin python-dotenv
         
-    # Commented out for testing - using existing data files
-    # - name: Export matches from Robot Events API
-    #   env:
-    #     ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
-    #   run: |
-    #     echo "Starting match export..."
-    #     node export_matches.js
-    #     echo "Match export completed. Checking if matches.csv was created..."
-    #     ls -la matches.csv || echo "matches.csv not found"
-      
-    # - name: Calculate and update TrueSkill ratings
-    #   env:
-    #     FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-    #     FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-    #     FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
-    #     FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
-    #   run: |
-    #     echo "Starting TrueSkill calculation..."
-    #     # Create a proper service account key file
-    #     echo '{
-    #       "type": "service_account",
-    #       "project_id": "'$FIREBASE_PROJECT_ID'",
-    #       "client_email": "'$FIREBASE_CLIENT_EMAIL'",
-    #       "private_key": "'$FIREBASE_PRIVATE_KEY'",
-    #       "token_uri": "https://oauth2.googleapis.com/token"
-    #     }' > serviceAccountKey.json
-    #     python complete_ts2026.py
-    #     echo "TrueSkill calculation completed. Checking if ts2026_ratings.json was created..."
-    #     ls -la ts2026_ratings.json || echo "ts2026_ratings.json not found"
+    - name: Export matches from Robot Events API
+      env:
+        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
+      run: |
+        echo "Starting match export..."
+        node export_matches.js
+        echo "Match export completed. Checking if matches.csv was created..."
+        ls -la matches.csv || echo "matches.csv not found"
+    - name: Calculate and update TrueSkill ratings
+      env:
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+      run: |
+        echo "Starting TrueSkill calculation..."
+        # Create a proper service account key file
+        echo '{
+          "type": "service_account",
+          "project_id": "'$FIREBASE_PROJECT_ID'",
+          "client_email": "'$FIREBASE_CLIENT_EMAIL'",
+          "private_key": "'$FIREBASE_PRIVATE_KEY'",
+          "token_uri": "https://oauth2.googleapis.com/token"
+        }' > serviceAccountKey.json
+        python complete_ts2026.py
+        echo "TrueSkill calculation completed. Checking if ts2026_ratings.json was created..."
+        ls -la ts2026_ratings.json || echo "ts2026_ratings.json not found"
     
     - name: Update Firebase with existing TrueSkill data
       env:
