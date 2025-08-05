@@ -14,18 +14,12 @@ def initialize_firebase():
         if all(key in os.environ for key in ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY']):
             print("Initializing Firebase with environment variables...")
             
-            # Get the private key and handle newlines properly
-            private_key = os.getenv('FIREBASE_PRIVATE_KEY', '')
-            # Handle both literal \n and actual newlines
-            if '\\n' in private_key:
-                private_key = private_key.replace('\\n', '\n')
+            # Handle private key the same way as Node.js version
+            private_key = os.getenv('FIREBASE_PRIVATE_KEY', '').replace('\\n', '\n')
             
-            # Ensure the private key has proper format
-            if not private_key.startswith('-----BEGIN PRIVATE KEY-----'):
-                raise ValueError("Private key does not start with proper header")
-            if not private_key.endswith('-----END PRIVATE KEY-----\n') and not private_key.endswith('-----END PRIVATE KEY-----'):
-                if not private_key.endswith('\n'):
-                    private_key += '\n'
+            # Remove quotes if they exist
+            if private_key.startswith('"') and private_key.endswith('"'):
+                private_key = private_key[1:-1]
             
             cred_dict = {
                 'type': 'service_account',
