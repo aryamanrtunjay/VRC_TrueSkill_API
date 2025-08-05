@@ -9,20 +9,46 @@ function initializeFirebase() {
   try {
     if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
       console.log('✅ Environment variables found');
+      console.log('📋 Project ID:', process.env.FIREBASE_PROJECT_ID);
+      console.log('📧 Client Email:', process.env.FIREBASE_CLIENT_EMAIL);
+      console.log('🔑 Private Key Length:', process.env.FIREBASE_PRIVATE_KEY.length);
+      
+      // Handle private key formatting more carefully
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      
+      // Replace \\n with actual newlines
+      privateKey = privateKey.replace(/\\n/g, '\n');
+      
+      // Ensure proper PEM format
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        console.log('❌ Private key missing BEGIN header');
+        return null;
+      }
+      if (!privateKey.includes('-----END PRIVATE KEY-----')) {
+        console.log('❌ Private key missing END footer');
+        return null;
+      }
+      
+      console.log('🔍 Private key format looks correct');
+      
       const cred = firebase_admin.credential.cert({
         type: 'service_account',
         project_id: process.env.FIREBASE_PROJECT_ID,
         client_email: process.env.FIREBASE_CLIENT_EMAIL,
-        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        private_key: privateKey,
       });
       firebase_admin.initializeApp({ credential: cred });
       return getFirestore();
     } else {
       console.log('❌ Missing environment variables');
+      console.log('📋 Project ID exists:', !!process.env.FIREBASE_PROJECT_ID);
+      console.log('📧 Client Email exists:', !!process.env.FIREBASE_CLIENT_EMAIL);
+      console.log('🔑 Private Key exists:', !!process.env.FIREBASE_PRIVATE_KEY);
       return null;
     }
   } catch (error) {
     console.log('❌ Firebase initialization failed:', error.message);
+    console.log('🔍 Full error:', error);
     return null;
   }
 }
