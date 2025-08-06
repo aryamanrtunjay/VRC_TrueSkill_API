@@ -156,7 +156,7 @@ def calculate_and_save_ts2026():
         except Exception as e:
             print(f"Error committing final batch: {e}")
     
-    print(f"\n✅ Successfully updated {updated_teams} teams with ts2026 TrueSkill ratings")
+    print(f"\nSuccessfully updated {updated_teams} teams with ts2026 TrueSkill ratings")
     
     sorted_teams = sorted(ts2026_data.items(), key=lambda x: x[1]['ts2026'], reverse=True)
     print("\nTop 10 teams by ts2026 rating:")
@@ -168,6 +168,6 @@ def calculate_and_save_ts2026():
 if __name__ == "__main__":
     success = calculate_and_save_ts2026()
     if success:
-        print("\n🎉 TrueSkill calculation completed!")
+        print("\nTrueSkill calculation completed!")
     else:
-        print("\n❌ TrueSkill calculation failed.")
+        print("\nTrueSkill calculation failed.")
