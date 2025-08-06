@@ -1,0 +1,54 @@
+name: Daily Skills Data Update
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch: 
+
+jobs:
+  update-skills:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Generate skills data
+      env:
+        ROBOT_EVENTS_TOKEN: ${{ secrets.ROBOT_EVENTS_TOKEN }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      run: |
+        echo "Starting skills generation..."
+        node skills_gen.js
+        echo "Skills generation completed. Checking if skills.csv was created..."
+        ls -la skills.csv || echo "skills.csv not found"
+      
+    - name: Commit and push updated skills data
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Pull latest changes to avoid conflicts
+        git pull origin main --rebase
+        
+        [ -f skills.csv ] && git add skills.csv
+        
+        if ! git diff --staged --quiet; then
+          git commit -m "Daily skills update: $(date)"
+          git push
+        else
+          echo "No changes to commit"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

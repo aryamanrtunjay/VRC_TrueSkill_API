@@ -94,6 +94,9 @@ function drawProgressBar(done, total, startTime) {
 
 async function main() {
   const startTime = Date.now();
+  const currentDate = new Date().toISOString(); // Format: 2025-08-05T04:21:39.290Z
+  console.log(`📅 Current date: ${currentDate}`);
+  
   console.log('📡 Fetching seasons...');
   const seasons = await fetchAll('/seasons', { program: PROGRAM_ID });
 
@@ -109,6 +112,7 @@ async function main() {
   let totalEvents = 0;
   let totalMatches = 0;
   let processedMatches = 0;
+  let filteredEvents = 0;
 
   for (const season of targetSeasons) {
     console.log(`\n📅 Fetching events for season: ${season.name}`);
@@ -120,6 +124,13 @@ async function main() {
     console.log(`   🔎 Found ${events.length} events`);
 
     for (const event of events) {
+      // Filter out events that haven't started yet
+      if (event.start && event.start > currentDate) {
+        filteredEvents++;
+        console.log(`   ⏭️ Skipping future event: ${event.name} (starts ${event.start})`);
+        continue;
+      }
+
       console.log(`   📍 Event: ${event.name} (ID: ${event.id})`);
       const eventDetails = await apiFetch(`/events/${event.id}`);
       const divisions = eventDetails.divisions || [];
@@ -181,6 +192,7 @@ async function main() {
   console.log(`✅ Done: ${rows.length} matches saved to matches.csv`);
   console.log(`⏱️ Elapsed time: ${elapsed} seconds`);
   console.log(`📊 Events processed: ${totalEvents}, Matches processed: ${processedMatches}`);
+  console.log(`⏭️ Future events filtered out: ${filteredEvents}`);
 }
 
 main().catch(err => {
