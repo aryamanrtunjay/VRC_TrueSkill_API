@@ -11,44 +11,68 @@
             margin: 0 auto;
             padding: 20px;
             line-height: 1.6;
-            color: #333;
+            color: #e1e5e9;
+            background-color: #1a1a1a;
         }
         .header {
             text-align: center;
             margin-bottom: 40px;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
             color: white;
             border-radius: 8px;
+            border: 1px solid #4a5568;
         }
         .endpoint {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 15px;
-            margin: 10px 0;
+            background: rgba(45, 55, 72, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(74, 85, 104, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
         .endpoint-url {
             font-family: 'Courier New', monospace;
-            background: #e9ecef;
+            background: #1a202c;
+            color: #68d391;
             padding: 8px;
             border-radius: 4px;
             margin: 5px 0;
+            border: 1px solid #4a5568;
         }
         .example {
-            color: #0066cc;
+            color: #63b3ed;
             text-decoration: none;
         }
         .example:hover {
             text-decoration: underline;
+            color: #90cdf4;
         }
         .status {
             display: inline-block;
-            background: #28a745;
+            background: #38a169;
             color: white;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 12px;
+        }
+        h2, h3 {
+            color: #f7fafc;
+        }
+        code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        a {
+            color: #63b3ed;
+        }
+        a:hover {
+            color: #90cdf4;
         }
     </style>
 </head>
@@ -59,7 +83,7 @@
         <span class="status">Active</span>
     </div>
 
-    <h2>📋 Available Endpoints</h2>
+    <h2>Available Endpoints</h2>
 
     <div class="endpoint">
         <h3>Get Team Skills Data</h3>
@@ -82,10 +106,10 @@
         <p><strong>Example:</strong> <a href="/api/leaderboard?limit=25" class="example">/api/leaderboard?limit=25</a></p>
     </div>
 
-    <h2>📊 Usage</h2>
+    <h2>Usage</h2>
     <p>All endpoints support CORS and return JSON responses. Use query parameters like <code>?team=1234A</code> for team-specific data.</p>
     
-    <h2>🔗 Links</h2>
+    <h2>Links</h2>
     <p>
         <a href="https://github.com/a-coder4/VRC_TrueSkill_API" target="_blank">GitHub Repository</a> |
         <a href="https://openskill-dusky.vercel.app" class="example">API Documentation (JSON)</a>
